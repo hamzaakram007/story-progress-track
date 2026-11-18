@@ -1,24 +1,43 @@
 {
+  "id": "/",
   "name": "Harbor Check",
   "short_name": "Harbor Check",
-  "description": "Spoiler-safe story progress tracker. Local checklists, blur mode, optional Pro sync.",
-  "start_url": "/",
+  "description": "Spoiler-safe story progress tracker. Local checklists, blur mode, optional Pro sync stub.",
+  "start_url": "/?source=pwa",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "background_color": "#061018",
   "theme_color": "#061018",
   "orientation": "portrait-primary",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["games", "utilities", "productivity"],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/icon-192.svg",
       "sizes": "192x192",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "/icon-512.svg",
       "sizes": "512x512",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-maskable-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
     }
   ]
 }

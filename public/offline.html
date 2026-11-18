@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#061018" />
+    <title>Harbor Check — offline</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        font-family: "DM Sans", system-ui, sans-serif;
+        background:
+          radial-gradient(ellipse 80% 50% at 50% 0%, rgba(46, 230, 214, 0.12), transparent 55%),
+          #061018;
+        color: #e8f4f2;
+      }
+      main {
+        max-width: 28rem;
+        text-align: center;
+      }
+      h1 {
+        font-family: Georgia, "Times New Roman", serif;
+        font-weight: 600;
+        font-size: 1.75rem;
+        margin: 0 0 0.75rem;
+      }
+      p {
+        margin: 0;
+        color: #8aa3a8;
+        line-height: 1.5;
+      }
+      button {
+        margin-top: 1.25rem;
+        border: 0;
+        border-radius: 0.75rem;
+        background: #2ee6d6;
+        color: #041018;
+        font-weight: 600;
+        padding: 0.75rem 1.1rem;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p style="letter-spacing: 0.22em; text-transform: uppercase; font-size: 0.7rem; color: #2ee6d6; font-weight: 600;">
+        Harbor Check
+      </p>
+      <h1>You’re offline</h1>
+      <p>
+        Cached checklist pages still work when you reopen the installed app. Reconnect to refresh
+        from the network.
+      </p>
+      <button type="button" onclick="location.href='/'">Try again</button>
+    </main>
+  </body>
+</html>

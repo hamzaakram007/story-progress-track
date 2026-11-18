@@ -39,6 +39,32 @@ body {
   filter: blur(7px);
 }
 
+.spoiler-mask {
+  letter-spacing: 0.04em;
+  background: linear-gradient(
+    90deg,
+    rgba(46, 230, 214, 0.12),
+    rgba(242, 193, 78, 0.08),
+    rgba(46, 230, 214, 0.12)
+  );
+  background-size: 200% 100%;
+  animation: mask-shimmer 4.5s ease-in-out infinite;
+  border-radius: 0.35rem;
+  padding: 0.1rem 0.35rem;
+  width: fit-content;
+  max-width: 100%;
+}
+
+@keyframes mask-shimmer {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
 @keyframes rise-in {
   from {
     opacity: 0;
