@@ -47,8 +47,8 @@ export default function OpenGraphImage() {
               lineHeight: 1.35,
             }}
           >
-            Local checklist PWA with masked tiers, categories, and a clear Pro stub.
-            Placeholder labels only.
+            Local checklist PWA with masked tiers and spoiler-safe labels.
+            Harbor Check by NeonGulf.
           </div>
         </div>
         <div
@@ -60,7 +60,7 @@ export default function OpenGraphImage() {
             fontFamily: "sans-serif",
           }}
         >
-          <span>story-progress-track.vercel.app</span>
+          <span>track.neongulf.com</span>
           <span>Installable · local-first</span>
         </div>
       </div>

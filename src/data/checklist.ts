@@ -28,7 +28,7 @@ function slots(
   }));
 }
 
-/** Placeholder labels only — no real mission/collectible spoilers. */
+/** Generic spoiler-safe labels — no real mission/collectible spoilers. */
 export const CATEGORIES: ChecklistCategory[] = [
   {
     id: "story",

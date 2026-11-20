@@ -10,12 +10,12 @@ type ProPaywallProps = {
 
 const COPY = {
   sync: {
-    title: "Cloud sync (coming later)",
-    body: "Pro will keep Harbor Check progress in the cloud across phones and tablets. Today this screen is a stub only — nothing is charged and nothing leaves this device.",
+    title: "Cloud sync (coming soon)",
+    body: "Pro will keep Harbor Check progress in the cloud across phones and tablets. Nothing is charged today and nothing leaves this device until Pro ships.",
   },
   pdf: {
-    title: "PDF export (coming later)",
-    body: "Pro will unlock a printable PDF of your checklist. Today this is a pricing mock only — you stay on free local mode with no payment request.",
+    title: "PDF export (coming soon)",
+    body: "Pro will unlock a printable PDF of your checklist. Free local mode stays available — no payment request today.",
   },
 } as const;
 
@@ -59,7 +59,7 @@ export function ProPaywall({ open, feature, onClose }: ProPaywallProps) {
               Harbor Check Pro
             </p>
             <span className="rounded-md border border-[var(--sand)]/40 bg-[var(--sand)]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--sand)]">
-              Stub · not charged
+              Coming soon
             </span>
           </div>
           <h2
@@ -71,8 +71,8 @@ export function ProPaywall({ open, feature, onClose }: ProPaywallProps) {
         </div>
         <div className="space-y-4 px-5 py-5">
           <p className="rounded-xl border border-[var(--sand)]/25 bg-[var(--sand)]/8 px-3 py-2 text-xs leading-relaxed text-[var(--sand)]">
-            Demo paywall only. No Lemon Squeezy / Stripe checkout is connected. Free local
-            tracking and spoiler blur stay available forever on this device.
+            Pro unlocks soon — free local mode stays available. Checkout is not live yet;
+            nothing is charged and your progress stays on this device.
           </p>
           <p className="text-sm leading-relaxed text-[var(--muted)]">{copy.body}</p>
           <div>
@@ -90,7 +90,7 @@ export function ProPaywall({ open, feature, onClose }: ProPaywallProps) {
           </div>
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
-              Planned Pro (not live)
+              Planned Pro
             </p>
             <ul className="mt-2 space-y-2 text-sm text-[var(--foam)]">
               <li className="flex gap-2">
@@ -112,7 +112,7 @@ export function ProPaywall({ open, feature, onClose }: ProPaywallProps) {
               </span>
             </p>
             <p className="mt-1 text-xs text-[var(--muted)]">
-              Price is illustrative. Tapping Unlock shows an alert — no card form opens.
+              Planned price. Unlock opens a notice for now — no card form.
             </p>
           </div>
           <button
@@ -120,11 +120,11 @@ export function ProPaywall({ open, feature, onClose }: ProPaywallProps) {
             className="w-full rounded-xl bg-[var(--teal)] px-4 py-3 text-sm font-semibold text-[#041018] transition hover:brightness-110"
             onClick={() =>
               alert(
-                "Pro checkout stub only.\n\nNo payment was taken. Connect Lemon Squeezy or Stripe later. Local progress stays free on this device."
+                "Pro unlocks soon.\n\nNo payment was taken. Free local progress stays on this device."
               )
             }
           >
-            Preview Unlock Pro (no charge)
+            Unlock Pro — coming soon
           </button>
           <button
             ref={closeRef}

@@ -3,7 +3,7 @@ import { DM_Sans, Fraunces } from "next/font/google";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import "./globals.css";
 
-const SITE = "https://story-progress-track.vercel.app";
+const SITE = "https://track.neongulf.com";
 
 const body = DM_Sans({
   variable: "--font-body",
@@ -24,16 +24,17 @@ export const metadata: Metadata = {
     template: "%s · Harbor Check",
   },
   description:
-    "Installable PWA for spoiler-safe story and collectible checklists. Local-first progress, masked reveal tiers, category overview, JSON backup. Placeholder labels only — no real spoilers.",
+    "Harbor Check by NeonGulf — installable PWA for spoiler-safe story and collectible checklists. Local-first progress, masked reveal tiers, category overview, and JSON backup. Generic checklist labels — spoiler-safe by design.",
   applicationName: "Harbor Check",
-  authors: [{ name: "Harbor Check" }],
-  creator: "Harbor Check",
+  authors: [{ name: "NeonGulf" }],
+  creator: "NeonGulf",
   keywords: [
     "spoiler-safe checklist",
     "story progress tracker",
     "collectibles tracker",
     "PWA",
     "Harbor Check",
+    "NeonGulf",
     "local-first",
   ],
   category: "utilities",
@@ -47,14 +48,14 @@ export const metadata: Metadata = {
     siteName: "Harbor Check",
     title: "Harbor Check — spoiler-safe progress tracker",
     description:
-      "Local-first checklist PWA with spoiler masking, six placeholder categories, install prompt, and a clearly labeled Pro stub.",
+      "Local-first checklist PWA with spoiler masking, six spoiler-safe categories, install prompt, and Pro unlocks soon — free local mode stays available.",
     locale: "en_US",
   },
   twitter: {
     card: "summary_large_image",
     title: "Harbor Check — spoiler-safe progress tracker",
     description:
-      "Track placeholder story slots without leaking spoilers. Installable, localStorage-backed, Pro stub only.",
+      "Track story and collectible slots without leaking spoilers. Installable, localStorage-backed. Harbor Check by NeonGulf.",
   },
   appleWebApp: {
     capable: true,
@@ -99,12 +100,12 @@ const jsonLd = {
   applicationCategory: "UtilitiesApplication",
   operatingSystem: "Any",
   description:
-    "Spoiler-safe story progress tracker PWA with local checklists and masked reveal tiers.",
+    "Harbor Check by NeonGulf — spoiler-safe story progress tracker PWA with local checklists and masked reveal tiers.",
   offers: {
     "@type": "Offer",
     price: "0",
     priceCurrency: "USD",
-    description: "Free local mode. Pro sync/PDF is a non-charging stub.",
+    description: "Free local mode. Pro sync and PDF unlock soon — nothing is charged today.",
   },
 };
 

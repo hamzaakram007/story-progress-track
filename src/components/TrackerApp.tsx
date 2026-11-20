@@ -232,14 +232,14 @@ export function TrackerApp() {
         />
         <div className="relative">
           <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--teal)]">
-            Harbor Check
+            Harbor Check by NeonGulf
           </p>
           <h1 className="mt-2 font-[family-name:var(--font-display)] text-[2.15rem] leading-[1.05] tracking-tight text-[var(--foam)]">
             Spoiler-safe progress
           </h1>
           <p className="mt-3 max-w-[32ch] text-sm leading-relaxed text-[var(--muted)]">
-            Check off placeholder mission and collectible slots. Hidden tiers stay
-            masked until you peek or raise the reveal line.
+            Check off mission and collectible slots with generic, spoiler-safe labels.
+            Hidden tiers stay masked until you peek or raise the reveal line.
           </p>
 
           <div className="mt-5">
@@ -335,8 +335,8 @@ export function TrackerApp() {
           </button>
         </div>
         <p className="text-xs leading-relaxed text-[var(--muted)]">
-          Masked slots show a neutral label only — real placeholder text stays out of
-          the DOM until you peek. Checked items always stay readable.
+          Masked slots show a neutral label only — checklist text stays out of the DOM
+          until you peek. Checked items always stay readable.
         </p>
         <div className="flex flex-wrap gap-2">
           <button
@@ -346,7 +346,7 @@ export function TrackerApp() {
           >
             Sync Pro
             <span className="ml-2 text-[10px] uppercase tracking-wider text-[var(--sand)]">
-              stub
+              soon
             </span>
           </button>
           <button
@@ -356,7 +356,7 @@ export function TrackerApp() {
           >
             PDF export
             <span className="ml-2 text-[10px] uppercase tracking-wider text-[var(--sand)]">
-              stub
+              soon
             </span>
           </button>
           {settings.peekedIds.length > 0 && (
@@ -377,7 +377,7 @@ export function TrackerApp() {
             Categories
           </h2>
           <p className="text-[11px] text-[var(--muted)]">
-            {CATEGORIES.length} lists · placeholders only
+            {CATEGORIES.length} lists · spoiler-safe labels
           </p>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -498,7 +498,7 @@ export function TrackerApp() {
                           Hidden {tier.toLowerCase()} slot
                         </span>
                         <span className="mt-0.5 block text-[11px] text-[var(--muted)]">
-                          Label withheld — peek to reveal this placeholder
+                          Label withheld — peek to reveal this slot
                         </span>
                       </>
                     ) : (
@@ -581,8 +581,8 @@ export function TrackerApp() {
         </button>
         <p>
           Progress saves on this device via localStorage with quota checks and backup
-          export. No Rockstar maps or assets — placeholder labels only. Independent fan
-          utility; not affiliated with Take-Two or Rockstar.
+          export. Generic checklist labels — spoiler-safe by design. Harbor Check by
+          NeonGulf — independent product, original checklist UI.
         </p>
         <p>
           Gear picks may earn affiliate commissions.{" "}

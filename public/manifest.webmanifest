@@ -2,7 +2,7 @@
   "id": "/",
   "name": "Harbor Check",
   "short_name": "Harbor Check",
-  "description": "Spoiler-safe story progress tracker. Local checklists, blur mode, optional Pro sync stub.",
+  "description": "Harbor Check by NeonGulf — spoiler-safe story progress tracker. Local checklists, blur mode, Pro unlocks soon.",
   "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
