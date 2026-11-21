@@ -34,7 +34,7 @@ export const CATEGORIES: ChecklistCategory[] = [
     id: "story",
     name: "Story missions",
     shortName: "Story",
-    description: "Main path beats — fill titles as you play.",
+    description: "Main path beats — rename slots with your own titles as you play.",
     accent: "teal",
     items: slots("story", "Mission set A", 12, (i) =>
       i < 4 ? 1 : i < 8 ? 2 : 3

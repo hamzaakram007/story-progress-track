@@ -10,13 +10,17 @@ import {
 import {
   DEFAULT_SETTINGS,
   exportBackup,
+  exportCsv,
   getStorageHealth,
+  loadCustomLabels,
   loadProgress,
   loadSettings,
   parseBackup,
+  saveCustomLabels,
   saveProgress,
   saveSettings,
   type AppSettings,
+  type CustomLabelsMap,
   type ProgressMap,
   type StorageFailReason,
   type StorageHealth,
@@ -24,6 +28,8 @@ import {
 } from "@/lib/storage";
 import { InstallPrompt } from "./InstallPrompt";
 import { ProPaywall } from "./ProPaywall";
+
+const MILESTONES = [25, 50, 75, 100] as const;
 
 function shouldHideLabel(
   item: ChecklistItem,
@@ -45,12 +51,24 @@ function noticeForReason(reason: StorageFailReason): string {
   return "Couldn’t save to this device. Try exporting a backup JSON.";
 }
 
+function displayLabel(
+  item: ChecklistItem,
+  labels: CustomLabelsMap
+): string {
+  return labels[item.id]?.trim() || item.label;
+}
+
 export function TrackerApp() {
   const [ready, setReady] = useState(false);
   const [progress, setProgress] = useState<ProgressMap>({});
+  const [labels, setLabels] = useState<CustomLabelsMap>({});
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [activeCategory, setActiveCategory] = useState(CATEGORIES[0].id);
   const [paywall, setPaywall] = useState<"sync" | "pdf" | null>(null);
+  const [query, setQuery] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState("");
+  const [milestone, setMilestone] = useState<number | null>(null);
   const [storageHealth, setStorageHealth] = useState<StorageHealth>({
     available: true,
     lastError: null,
@@ -58,7 +76,10 @@ export function TrackerApp() {
   });
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const editInputRef = useRef<HTMLInputElement>(null);
   const skipNextPersist = useRef(true);
+  const prevPct = useRef<number | null>(null);
+  const listRef = useRef<HTMLElement | null>(null);
 
   function applyWriteResult(result: StorageWriteResult) {
     if (result.ok) {
@@ -76,6 +97,7 @@ export function TrackerApp() {
       if (cancelled) return;
       const loadedSettings = loadSettings();
       setProgress(loadProgress());
+      setLabels(loadCustomLabels());
       setSettings(loadedSettings);
       const match = CATEGORIES.find(
         (c) => c.id === loadedSettings.lastCategoryId
@@ -108,6 +130,13 @@ export function TrackerApp() {
   }, [settings, activeCategory, ready]);
 
   useEffect(() => {
+    if (!ready) return;
+    if (skipNextPersist.current) return;
+    const result = saveCustomLabels(labels);
+    queueMicrotask(() => applyWriteResult(result));
+  }, [labels, ready]);
+
+  useEffect(() => {
     function onStorage(event: StorageEvent) {
       if (event.key === "harbor-check-progress-v1" && event.newValue) {
         try {
@@ -119,10 +148,20 @@ export function TrackerApp() {
       if (event.key === "harbor-check-settings-v1" && event.newValue) {
         setSettings(loadSettings());
       }
+      if (event.key === "harbor-check-labels-v1" && event.newValue) {
+        setLabels(loadCustomLabels());
+      }
     }
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
   }, []);
+
+  useEffect(() => {
+    if (editingId) {
+      editInputRef.current?.focus();
+      editInputRef.current?.select();
+    }
+  }, [editingId]);
 
   const totals = useMemo(() => {
     let done = 0;
@@ -140,12 +179,42 @@ export function TrackerApp() {
     };
   }, [progress]);
 
+  useEffect(() => {
+    if (!ready) return;
+    if (prevPct.current === null) {
+      prevPct.current = totals.pct;
+      return;
+    }
+    const prev = prevPct.current;
+    prevPct.current = totals.pct;
+    if (totals.pct <= prev) return;
+    const hit = [...MILESTONES]
+      .reverse()
+      .find((m) => totals.pct >= m && prev < m);
+    if (hit) {
+      setMilestone(hit);
+      const timer = window.setTimeout(() => setMilestone(null), 4200);
+      return () => window.clearTimeout(timer);
+    }
+  }, [totals.pct, ready]);
+
   const category =
     CATEGORIES.find((c) => c.id === activeCategory) ?? CATEGORIES[0];
-  const visibleItems = category.items.filter((item) =>
-    settings.hideCompleted ? !progress[item.id] : true
-  );
+  const normalizedQuery = query.trim().toLowerCase();
+
+  const visibleItems = category.items.filter((item) => {
+    if (settings.hideCompleted && progress[item.id]) return false;
+    if (!normalizedQuery) return true;
+    const label = displayLabel(item, labels).toLowerCase();
+    const hidden = shouldHideLabel(item, !!progress[item.id], settings);
+    if (hidden) {
+      return TIER_LABELS[item.spoilerTier].toLowerCase().includes(normalizedQuery);
+    }
+    return label.includes(normalizedQuery) || item.id.includes(normalizedQuery);
+  });
+
   const categoryDone = category.items.filter((i) => progress[i.id]).length;
+  const isFresh = totals.done === 0;
 
   function toggleItem(id: string) {
     setProgress((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -166,11 +235,38 @@ export function TrackerApp() {
     setProgress({});
   }
 
-  function downloadBackup() {
-    const payload = exportBackup(progress, {
-      ...settings,
-      lastCategoryId: activeCategory,
+  function startEdit(item: ChecklistItem) {
+    setEditingId(item.id);
+    setEditDraft(displayLabel(item, labels));
+  }
+
+  function commitEdit() {
+    if (!editingId) return;
+    const next = editDraft.trim().slice(0, 120);
+    setLabels((prev) => {
+      const copy = { ...prev };
+      if (!next) {
+        delete copy[editingId];
+      } else {
+        copy[editingId] = next;
+      }
+      return copy;
     });
+    setEditingId(null);
+    setEditDraft("");
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditDraft("");
+  }
+
+  function downloadBackup() {
+    const payload = exportBackup(
+      progress,
+      { ...settings, lastCategoryId: activeCategory },
+      labels
+    );
     const blob = new Blob([JSON.stringify(payload, null, 2)], {
       type: "application/json",
     });
@@ -180,6 +276,29 @@ export function TrackerApp() {
     anchor.download = `harbor-check-backup-${new Date()
       .toISOString()
       .slice(0, 10)}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function downloadCsv() {
+    const rows = CATEGORIES.flatMap((cat) =>
+      cat.items.map((item) => ({
+        category: cat.name,
+        id: item.id,
+        label: displayLabel(item, labels),
+        done: !!progress[item.id],
+        tier: TIER_LABELS[item.spoilerTier],
+      }))
+    );
+    const blob = new Blob([exportCsv(rows)], {
+      type: "text/csv;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `harbor-check-progress-${new Date()
+      .toISOString()
+      .slice(0, 10)}.csv`;
     anchor.click();
     URL.revokeObjectURL(url);
   }
@@ -196,12 +315,13 @@ export function TrackerApp() {
       }
       if (
         !confirm(
-          "Replace progress and settings on this device with the backup?"
+          "Replace progress, labels, and settings on this device with the backup?"
         )
       ) {
         return;
       }
       setProgress(backup.progress);
+      setLabels(backup.customLabels);
       setSettings(backup.settings);
       const match = CATEGORIES.find(
         (c) => c.id === backup.settings.lastCategoryId
@@ -211,9 +331,19 @@ export function TrackerApp() {
     reader.readAsText(file);
   }
 
+  function startFirstCheck() {
+    listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const firstOpen = category.items.find((item) => !progress[item.id]);
+    if (firstOpen) toggleItem(firstOpen.id);
+  }
+
   if (!ready) {
     return (
-      <div className="mx-auto flex min-h-full w-full max-w-lg items-center justify-center px-4 py-20 text-sm text-[var(--muted)]">
+      <div
+        className="mx-auto flex min-h-full w-full max-w-lg items-center justify-center px-4 py-20 text-sm text-[var(--muted)]"
+        role="status"
+        aria-live="polite"
+      >
         Loading local progress…
       </div>
     );
@@ -221,6 +351,13 @@ export function TrackerApp() {
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-lg flex-col px-4 pb-10 pt-6 sm:px-6">
+      <a
+        href="#checklist"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-[var(--teal)] focus:px-3 focus:py-2 focus:text-sm focus:font-semibold focus:text-[#041018]"
+      >
+        Skip to checklist
+      </a>
+
       <header className="animate-glow relative overflow-hidden rounded-3xl border border-[var(--line)] bg-[var(--panel)] px-5 py-6">
         <div
           className="pointer-events-none absolute inset-0 opacity-80"
@@ -237,9 +374,10 @@ export function TrackerApp() {
           <h1 className="mt-2 font-[family-name:var(--font-display)] text-[2.15rem] leading-[1.05] tracking-tight text-[var(--foam)]">
             Spoiler-safe progress
           </h1>
-          <p className="mt-3 max-w-[32ch] text-sm leading-relaxed text-[var(--muted)]">
-            Check off mission and collectible slots with generic, spoiler-safe labels.
-            Hidden tiers stay masked until you peek or raise the reveal line.
+          <p className="mt-3 max-w-[34ch] text-sm leading-relaxed text-[var(--muted)]">
+            Check off missions, collectibles, and side slots. Spoiler mask hides
+            later tiers. Rename slots with your own notes — blank lists only, no
+            ripped maps.
           </p>
 
           <div className="mt-5">
@@ -265,15 +403,66 @@ export function TrackerApp() {
               />
             </div>
           </div>
+
+          {isFresh && (
+            <button
+              type="button"
+              onClick={startFirstCheck}
+              className="mt-5 w-full rounded-xl bg-[var(--teal)] px-4 py-3 text-sm font-semibold text-[#041018] transition hover:brightness-110"
+            >
+              Check your first slot
+            </button>
+          )}
         </div>
       </header>
+
+      {milestone !== null && (
+        <div
+          className="mt-4 animate-rise rounded-2xl border border-[var(--teal)]/35 bg-[var(--teal)]/10 px-4 py-3 text-sm text-[var(--teal)]"
+          role="status"
+          aria-live="polite"
+        >
+          {milestone === 100
+            ? "All slots checked on this device. Export a backup so you keep the win."
+            : `${milestone}% complete — nice pace. Keep going when you’re ready.`}
+        </div>
+      )}
+
+      {!settings.tipDismissed && (
+        <aside
+          className="mt-4 rounded-2xl border border-[var(--line)] bg-[var(--panel)] px-4 py-3"
+          aria-label="How Harbor Check works"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium text-[var(--foam)]">
+                Three quick moves
+              </p>
+              <ol className="mt-2 list-decimal space-y-1 pl-4 text-xs leading-relaxed text-[var(--muted)]">
+                <li>Tap a checkbox to mark progress (saves on this phone).</li>
+                <li>Leave Spoiler mask on until you finish early story.</li>
+                <li>Rename any slot with your own note — never paste stolen guide text.</li>
+              </ol>
+            </div>
+            <button
+              type="button"
+              className="shrink-0 text-xs text-[var(--muted)] hover:text-[var(--foam)]"
+              onClick={() =>
+                setSettings((s) => ({ ...s, tipDismissed: true }))
+              }
+            >
+              Got it
+            </button>
+          </div>
+        </aside>
+      )}
 
       <InstallPrompt />
 
       {(saveNotice || !storageHealth.available) && (
         <div
           className="mt-4 rounded-2xl border border-[var(--sand)]/35 bg-[var(--sand)]/10 px-4 py-3 text-xs leading-relaxed text-[var(--sand)]"
-          role="status"
+          role="alert"
         >
           {saveNotice ||
             "Browser storage unavailable. Use Export backup before you leave."}
@@ -284,7 +473,7 @@ export function TrackerApp() {
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            className={`rounded-xl border px-3 py-2 text-sm transition ${
+            className={`min-h-11 rounded-xl border px-3 py-2 text-sm transition ${
               settings.spoilerBlur
                 ? "border-[var(--teal)]/40 bg-[var(--teal)]/10 text-[var(--teal)]"
                 : "border-[var(--line)] bg-[var(--panel)] text-[var(--muted)]"
@@ -300,7 +489,7 @@ export function TrackerApp() {
           >
             Spoiler mask {settings.spoilerBlur ? "on" : "off"}
           </button>
-          <label className="flex items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-sm text-[var(--muted)]">
+          <label className="flex min-h-11 items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-sm text-[var(--muted)]">
             Reveal through
             <select
               className="rounded-md border border-[var(--line)] bg-[var(--panel-2)] px-2 py-1 text-[var(--foam)]"
@@ -321,7 +510,7 @@ export function TrackerApp() {
           </label>
           <button
             type="button"
-            className={`rounded-xl border px-3 py-2 text-sm transition ${
+            className={`min-h-11 rounded-xl border px-3 py-2 text-sm transition ${
               settings.hideCompleted
                 ? "border-[var(--sand)]/40 bg-[var(--sand)]/10 text-[var(--sand)]"
                 : "border-[var(--line)] bg-[var(--panel)] text-[var(--muted)]"
@@ -341,7 +530,7 @@ export function TrackerApp() {
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            className="rounded-xl border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-sm text-[var(--foam)] hover:border-[var(--teal)]/40"
+            className="min-h-11 rounded-xl border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-sm text-[var(--foam)] hover:border-[var(--teal)]/40"
             onClick={() => setPaywall("sync")}
           >
             Sync Pro
@@ -351,7 +540,7 @@ export function TrackerApp() {
           </button>
           <button
             type="button"
-            className="rounded-xl border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-sm text-[var(--foam)] hover:border-[var(--sand)]/40"
+            className="min-h-11 rounded-xl border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-sm text-[var(--foam)] hover:border-[var(--sand)]/40"
             onClick={() => setPaywall("pdf")}
           >
             PDF export
@@ -362,7 +551,7 @@ export function TrackerApp() {
           {settings.peekedIds.length > 0 && (
             <button
               type="button"
-              className="rounded-xl border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-sm text-[var(--muted)] hover:text-[var(--foam)]"
+              className="min-h-11 rounded-xl border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-sm text-[var(--muted)] hover:text-[var(--foam)]"
               onClick={clearPeeks}
             >
               Re-mask peeks ({settings.peekedIds.length})
@@ -377,7 +566,7 @@ export function TrackerApp() {
             Categories
           </h2>
           <p className="text-[11px] text-[var(--muted)]">
-            {CATEGORIES.length} lists · spoiler-safe labels
+            {CATEGORIES.length} lists · your notes only
           </p>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -393,7 +582,7 @@ export function TrackerApp() {
                 key={cat.id}
                 type="button"
                 onClick={() => setActiveCategory(cat.id)}
-                className={`rounded-2xl border px-3 py-3 text-left transition ${
+                className={`min-h-11 rounded-2xl border px-3 py-3 text-left transition ${
                   active
                     ? `bg-[var(--panel)] shadow-[0_0_0_1px_rgba(46,230,214,0.12)] ${ACCENT_CLASS[cat.accent]}`
                     : "border-[var(--line)] bg-[var(--panel)]/70 text-[var(--muted)] hover:border-[var(--teal)]/25"
@@ -421,8 +610,23 @@ export function TrackerApp() {
         </div>
       </section>
 
+      <div className="mt-4">
+        <label className="sr-only" htmlFor="checklist-search">
+          Search checklist slots
+        </label>
+        <input
+          id="checklist-search"
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search slots…"
+          className="min-h-11 w-full rounded-xl border border-[var(--line)] bg-[var(--panel)] px-3 py-2.5 text-sm text-[var(--foam)] placeholder:text-[var(--muted)] focus:border-[var(--teal)]/50 focus:outline-none"
+          autoComplete="off"
+        />
+      </div>
+
       <nav
-        className="mt-4 -mx-1 flex gap-2 overflow-x-auto px-1 pb-1"
+        className="mt-3 -mx-1 flex gap-2 overflow-x-auto px-1 pb-1"
         aria-label="Jump to category"
       >
         {CATEGORIES.map((cat) => {
@@ -432,7 +636,7 @@ export function TrackerApp() {
               key={`chip-${cat.id}`}
               type="button"
               onClick={() => setActiveCategory(cat.id)}
-              className={`shrink-0 rounded-full border px-3 py-1.5 text-xs transition ${
+              className={`min-h-10 shrink-0 rounded-full border px-3 py-1.5 text-xs transition ${
                 active
                   ? "border-[var(--teal)]/50 bg-[var(--teal)]/15 text-[var(--teal)]"
                   : "border-[var(--line)] text-[var(--muted)]"
@@ -444,7 +648,11 @@ export function TrackerApp() {
         })}
       </nav>
 
-      <section className="mt-4 flex-1 rounded-3xl border border-[var(--line)] bg-[var(--panel)]/80">
+      <section
+        id="checklist"
+        ref={listRef}
+        className="mt-4 flex-1 rounded-3xl border border-[var(--line)] bg-[var(--panel)]/80"
+      >
         <div className="border-b border-[var(--line)] px-4 py-4">
           <h2 className="font-[family-name:var(--font-display)] text-xl text-[var(--foam)]">
             {category.name}
@@ -455,76 +663,163 @@ export function TrackerApp() {
           <p className="mt-2 text-xs uppercase tracking-wider text-[var(--sand)]">
             {categoryDone} of {category.items.length} checked
             {settings.hideCompleted ? " · hiding completed" : ""}
+            {normalizedQuery ? " · filtered" : ""}
           </p>
         </div>
 
         <ul className="divide-y divide-[var(--line)]">
           {visibleItems.length === 0 && (
-            <li className="px-4 py-8 text-center text-sm text-[var(--muted)]">
-              Everything in this category is checked. Turn off “Hide done” to review.
+            <li className="px-4 py-10 text-center">
+              <p className="text-sm text-[var(--foam)]">
+                {normalizedQuery
+                  ? "No slots match that search."
+                  : settings.hideCompleted && categoryDone === category.items.length
+                    ? "Everything in this category is checked."
+                    : "No slots here yet."}
+              </p>
+              <p className="mt-2 text-xs text-[var(--muted)]">
+                {normalizedQuery
+                  ? "Clear search or try another category."
+                  : settings.hideCompleted
+                    ? "Turn off “Hide done” to review, or jump to another list."
+                    : "Pick another category above."}
+              </p>
+              {(normalizedQuery || settings.hideCompleted) && (
+                <div className="mt-4 flex flex-wrap justify-center gap-2">
+                  {normalizedQuery && (
+                    <button
+                      type="button"
+                      className="rounded-xl border border-[var(--line)] px-3 py-2 text-sm text-[var(--foam)]"
+                      onClick={() => setQuery("")}
+                    >
+                      Clear search
+                    </button>
+                  )}
+                  {settings.hideCompleted && (
+                    <button
+                      type="button"
+                      className="rounded-xl border border-[var(--line)] px-3 py-2 text-sm text-[var(--foam)]"
+                      onClick={() =>
+                        setSettings((s) => ({ ...s, hideCompleted: false }))
+                      }
+                    >
+                      Show completed
+                    </button>
+                  )}
+                </div>
+              )}
             </li>
           )}
           {visibleItems.map((item) => {
             const done = !!progress[item.id];
             const hidden = shouldHideLabel(item, done, settings);
             const tier = TIER_LABELS[item.spoilerTier];
+            const label = displayLabel(item, labels);
+            const isEditing = editingId === item.id;
             return (
               <li key={item.id} className="flex items-stretch">
-                <button
-                  type="button"
-                  onClick={() => toggleItem(item.id)}
-                  className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3.5 text-left transition hover:bg-white/[0.03]"
-                  aria-pressed={done}
-                  aria-label={
-                    hidden
-                      ? `Toggle ${tier} tier slot ${item.id}, label hidden`
-                      : `Toggle ${item.label}`
-                  }
-                >
-                  <span
-                    className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border text-xs transition ${
-                      done
-                        ? "border-[var(--teal)] bg-[var(--teal)] text-[#041018]"
-                        : "border-[var(--line)] bg-[var(--panel-2)] text-transparent"
-                    }`}
-                    aria-hidden
-                  >
-                    ✓
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    {hidden ? (
-                      <>
-                        <span className="spoiler-mask block text-sm text-[var(--foam)]">
-                          Hidden {tier.toLowerCase()} slot
-                        </span>
-                        <span className="mt-0.5 block text-[11px] text-[var(--muted)]">
-                          Label withheld — peek to reveal this slot
-                        </span>
-                      </>
-                    ) : (
-                      <span
-                        className={`block text-sm transition ${
-                          done
-                            ? "text-[var(--muted)] line-through"
-                            : "text-[var(--foam)]"
-                        }`}
+                {isEditing ? (
+                  <div className="flex min-w-0 flex-1 flex-col gap-2 px-4 py-3">
+                    <label className="text-[11px] uppercase tracking-wider text-[var(--muted)]">
+                      Your label (optional)
+                    </label>
+                    <input
+                      ref={editInputRef}
+                      value={editDraft}
+                      onChange={(e) => setEditDraft(e.target.value)}
+                      maxLength={120}
+                      className="min-h-11 rounded-lg border border-[var(--teal)]/40 bg-[var(--panel-2)] px-3 py-2 text-sm text-[var(--foam)] focus:outline-none"
+                      placeholder={item.label}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") commitEdit();
+                        if (e.key === "Escape") cancelEdit();
+                      }}
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        className="rounded-lg bg-[var(--teal)] px-3 py-2 text-xs font-semibold text-[#041018]"
+                        onClick={commitEdit}
                       >
-                        {item.label}
+                        Save label
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-lg px-3 py-2 text-xs text-[var(--muted)]"
+                        onClick={cancelEdit}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => toggleItem(item.id)}
+                      className="flex min-h-14 min-w-0 flex-1 items-center gap-3 px-4 py-3.5 text-left transition hover:bg-white/[0.03]"
+                      aria-pressed={done}
+                      aria-label={
+                        hidden
+                          ? `Toggle ${tier} tier slot ${item.id}, label hidden`
+                          : `Toggle ${label}`
+                      }
+                    >
+                      <span
+                        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border text-xs transition ${
+                          done
+                            ? "border-[var(--teal)] bg-[var(--teal)] text-[#041018]"
+                            : "border-[var(--line)] bg-[var(--panel-2)] text-transparent"
+                        }`}
+                        aria-hidden
+                      >
+                        ✓
                       </span>
+                      <span className="min-w-0 flex-1">
+                        {hidden ? (
+                          <>
+                            <span className="spoiler-mask block text-sm text-[var(--foam)]">
+                              Hidden {tier.toLowerCase()} slot
+                            </span>
+                            <span className="mt-0.5 block text-[11px] text-[var(--muted)]">
+                              Label withheld — peek to reveal this slot
+                            </span>
+                          </>
+                        ) : (
+                          <span
+                            className={`block text-sm transition ${
+                              done
+                                ? "text-[var(--muted)] line-through"
+                                : "text-[var(--foam)]"
+                            }`}
+                          >
+                            {label}
+                          </span>
+                        )}
+                      </span>
+                      <span className="shrink-0 text-[10px] uppercase tracking-wider text-[var(--muted)]">
+                        {tier}
+                      </span>
+                    </button>
+                    {hidden ? (
+                      <button
+                        type="button"
+                        className="min-h-14 shrink-0 border-l border-[var(--line)] px-3 text-xs font-medium text-[var(--teal)] hover:bg-white/[0.03]"
+                        onClick={() => peekItem(item.id)}
+                      >
+                        Peek
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="min-h-14 shrink-0 border-l border-[var(--line)] px-3 text-xs font-medium text-[var(--muted)] hover:bg-white/[0.03] hover:text-[var(--foam)]"
+                        onClick={() => startEdit(item)}
+                        aria-label={`Rename ${label}`}
+                      >
+                        Rename
+                      </button>
                     )}
-                  </span>
-                  <span className="shrink-0 text-[10px] uppercase tracking-wider text-[var(--muted)]">
-                    {tier}
-                  </span>
-                </button>
-                {hidden && (
-                  <button
-                    type="button"
-                    className="shrink-0 border-l border-[var(--line)] px-3 text-xs font-medium text-[var(--teal)] hover:bg-white/[0.03]"
-                    onClick={() => peekItem(item.id)}
-                  >
-                    Peek
-                  </button>
+                  </>
                 )}
               </li>
             );
@@ -537,7 +832,7 @@ export function TrackerApp() {
           Device backup
         </h2>
         <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">
-          Free JSON export/import for when localStorage is cleared or full. Last save:{" "}
+          Free JSON + CSV for when localStorage is cleared or full. Last save:{" "}
           {storageHealth.lastSavedAt
             ? new Date(storageHealth.lastSavedAt).toLocaleString()
             : "not yet"}
@@ -547,16 +842,23 @@ export function TrackerApp() {
           <button
             type="button"
             onClick={downloadBackup}
-            className="rounded-xl border border-[var(--teal)]/35 bg-[var(--teal)]/10 px-3 py-2 text-sm text-[var(--teal)]"
+            className="min-h-11 rounded-xl border border-[var(--teal)]/35 bg-[var(--teal)]/10 px-3 py-2 text-sm text-[var(--teal)]"
           >
-            Export backup
+            Export JSON
+          </button>
+          <button
+            type="button"
+            onClick={downloadCsv}
+            className="min-h-11 rounded-xl border border-[var(--line)] bg-[var(--panel-2)] px-3 py-2 text-sm text-[var(--foam)]"
+          >
+            Export CSV
           </button>
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="rounded-xl border border-[var(--line)] bg-[var(--panel-2)] px-3 py-2 text-sm text-[var(--foam)]"
+            className="min-h-11 rounded-xl border border-[var(--line)] bg-[var(--panel-2)] px-3 py-2 text-sm text-[var(--foam)]"
           >
-            Import backup
+            Import JSON
           </button>
           <input
             ref={fileInputRef}
@@ -575,19 +877,24 @@ export function TrackerApp() {
         <button
           type="button"
           onClick={resetProgress}
-          className="text-[var(--muted)] underline-offset-2 hover:text-[var(--foam)] hover:underline"
+          className="min-h-10 text-[var(--muted)] underline-offset-2 hover:text-[var(--foam)] hover:underline"
         >
           Reset local progress
         </button>
         <p>
-          Progress saves on this device via localStorage with quota checks and backup
-          export. Generic checklist labels — spoiler-safe by design. Harbor Check by
-          NeonGulf — independent product, original checklist UI.
+          Progress stays on this device. Generic blank slots + your labels only —
+          spoiler-safe by design. No Rockstar maps or stolen guide text.
         </p>
         <p>
-          Gear picks may earn affiliate commissions.{" "}
-          <span className="text-[var(--sand)]">Disclosure:</span> we may earn from
-          qualifying purchases.
+          Harbor Check by{" "}
+          <a
+            href="https://neongulf.com"
+            className="text-[var(--teal)] underline-offset-2 hover:underline"
+            rel="noopener noreferrer"
+          >
+            NeonGulf
+          </a>
+          . More tools on the suite home — this app is a tracker, not a shop.
         </p>
       </footer>
 
