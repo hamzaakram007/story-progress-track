@@ -1,4 +1,4 @@
-const CACHE = "harbor-check-v2";
+const CACHE = "harbor-check-v3";
 const OFFLINE_URL = "/offline.html";
 const PRECACHE = [
   "/",

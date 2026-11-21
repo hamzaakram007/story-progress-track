@@ -93,3 +93,11 @@ body {
 .animate-glow {
   animation: pulse-glow 4s ease-in-out infinite;
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise,
+  .animate-glow,
+  .spoiler-mask {
+    animation: none !important;
+  }
+}

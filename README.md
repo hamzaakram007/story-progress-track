@@ -3,19 +3,20 @@
 Spoiler-safe **story progress tracker** PWA — Harbor Check by NeonGulf.
 
 **Live:** https://track.neongulf.com  
-**Brand:** Harbor Check (product) · NeonGulf (suite). Independent original checklist UI with generic, spoiler-safe labels.
+**Brand:** Harbor Check (product) · NeonGulf (suite). Independent original checklist UI with blank/user labels only — not an affiliate shop.
 
 ## What it does
 
 - Mobile-friendly checklist UI (Next.js + TypeScript + Tailwind)
-- **6 categories** with **generic spoiler-safe** labels (`Mission set A — item 1`, etc.)
-- Progress persisted in **localStorage** with availability / quota handling
-- Free **JSON backup export/import**
+- **6 categories** with blank slots you can rename (your notes only)
+- Progress in **localStorage** with availability / quota handling + cross-tab sync
+- Free **JSON backup** (import/export) and **CSV export**
 - **Spoiler mask** — hidden tiers withhold labels from the DOM until Peek / reveal tier
-- Category overview grid + jump chips + hide-completed filter
+- Category overview, search, hide-completed, first-action CTA, milestone feedback
 - **Install prompt** (Chromium `beforeinstallprompt` + iOS Add to Home Screen tip)
-- Offline fallback page via service worker cache
-- **Pro unlocks soon** — free local mode stays available; checkout not live yet
+- Offline fallback via service worker cache
+- Security headers (CSP, frame deny, nosniff, referrer, permissions)
+- Soft NeonGulf suite footer link only — no affiliate catalog takeover
 - SEO: canonical URL, Open Graph / Twitter cards, sitemap, robots, JSON-LD
 
 ## Run locally
@@ -40,8 +41,8 @@ npm run build && npm start
 
 ## Legal / product notes
 
-- Fill checklist slots with **your own** notes as you play — never ship stolen guide text as product IP.
-- Affiliate disclosure footer is included for future gear cross-links.
+- Fill checklist slots with **your own** notes as you play — never ship stolen guide text or ripped maps.
+- Soft link to NeonGulf suite home only; this product is a tracker, not a shop.
 - Pro sync/PDF unlock soon; free local tracking remains available without checkout.
 
 ## License

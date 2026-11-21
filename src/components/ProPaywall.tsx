@@ -84,7 +84,7 @@ export function ProPaywall({ open, feature, onClose }: ProPaywallProps) {
                 <span className="text-[var(--teal)]">✓</span> Local checklist + categories
               </li>
               <li className="flex gap-2">
-                <span className="text-[var(--teal)]">✓</span> Spoiler blur / peek / JSON backup
+                <span className="text-[var(--teal)]">✓</span> Spoiler mask / peek / rename / JSON+CSV
               </li>
             </ul>
           </div>

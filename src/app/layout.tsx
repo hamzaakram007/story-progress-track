@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     template: "%s · Harbor Check",
   },
   description:
-    "Harbor Check by NeonGulf — installable PWA for spoiler-safe story and collectible checklists. Local-first progress, masked reveal tiers, category overview, and JSON backup. Generic checklist labels — spoiler-safe by design.",
+    "Harbor Check by NeonGulf — installable PWA for spoiler-safe story and collectible checklists. Local-first progress, spoiler mask, renameable blank slots, category overview, and JSON/CSV backup. No ripped maps.",
   applicationName: "Harbor Check",
   authors: [{ name: "NeonGulf" }],
   creator: "NeonGulf",
@@ -48,7 +48,7 @@ export const metadata: Metadata = {
     siteName: "Harbor Check",
     title: "Harbor Check — spoiler-safe progress tracker",
     description:
-      "Local-first checklist PWA with spoiler masking, six spoiler-safe categories, install prompt, and Pro unlocks soon — free local mode stays available.",
+      "Local-first checklist PWA with spoiler masking, six blank categories you rename, install prompt, and free JSON/CSV backup. Pro sync soon — free local mode stays available.",
     locale: "en_US",
   },
   twitter: {
@@ -88,7 +88,6 @@ export const viewport: Viewport = {
   ],
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
   viewportFit: "cover",
 };
 
